@@ -1,0 +1,62 @@
+CREATE TABLE IF NOT EXISTS plans (
+ id INT AUTO_INCREMENT PRIMARY KEY, code VARCHAR(24) UNIQUE NOT NULL, name VARCHAR(80) NOT NULL, price DECIMAL(12,2) NOT NULL,
+ member_limit INT NOT NULL, order_limit INT NOT NULL, storage_mb INT NOT NULL, premium TINYINT NOT NULL DEFAULT 0, grace_days INT NOT NULL DEFAULT 5
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT IGNORE INTO plans (code,name,price,member_limit,order_limit,storage_mb,premium) VALUES
+ ('free','Free',0,1,5,10,0), ('pro','Profissional',59.90,2,100,250,1), ('team','Equipe',99.90,5,300,1000,1), ('enterprise','Empresa',179.90,15,1000,5000,1);
+CREATE TABLE IF NOT EXISTS tenants (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(160) NOT NULL, email VARCHAR(190) NOT NULL DEFAULT '', phone VARCHAR(30) NOT NULL DEFAULT '',
+ document VARCHAR(20) NOT NULL DEFAULT '', address VARCHAR(255) NOT NULL DEFAULT '', pix VARCHAR(140) NOT NULL DEFAULT '',
+ logo VARCHAR(64) NULL, blocked TINYINT NOT NULL DEFAULT 0, order_sequence INT NOT NULL DEFAULT 0,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS users (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(160) NOT NULL, email VARCHAR(190) UNIQUE NOT NULL, password VARCHAR(255) NOT NULL,
+ platform_admin TINYINT NOT NULL DEFAULT 0, session_version INT NOT NULL DEFAULT 0,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS tenant_memberships (
+ tenant_id BIGINT NOT NULL, user_id BIGINT NOT NULL, role ENUM('owner','admin','technician') NOT NULL, active TINYINT NOT NULL DEFAULT 1,
+ PRIMARY KEY (tenant_id,user_id), FOREIGN KEY (tenant_id) REFERENCES tenants(id), FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS subscriptions (
+ tenant_id BIGINT PRIMARY KEY, plan_id INT NOT NULL, starts_on DATE NOT NULL, ends_on DATE NULL, status ENUM('active','cancelled') NOT NULL,
+ FOREIGN KEY (tenant_id) REFERENCES tenants(id), FOREIGN KEY (plan_id) REFERENCES plans(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS subscription_events (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, tenant_id BIGINT NOT NULL, actor_id BIGINT NOT NULL, old_plan_id INT NOT NULL, new_plan_id INT NOT NULL,
+ status VARCHAR(24) NOT NULL, amount_received DECIMAL(12,2) NOT NULL DEFAULT 0, ends_on DATE NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (tenant_id) REFERENCES tenants(id), FOREIGN KEY (actor_id) REFERENCES users(id),
+ FOREIGN KEY (old_plan_id) REFERENCES plans(id), FOREIGN KEY (new_plan_id) REFERENCES plans(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS audit_logs (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, tenant_id BIGINT NULL, actor_id BIGINT NULL, event VARCHAR(75) NOT NULL, resource_id BIGINT NULL,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX (tenant_id,event,created_at),
+ FOREIGN KEY (tenant_id) REFERENCES tenants(id), FOREIGN KEY (actor_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS login_limits (
+ bucket CHAR(64) PRIMARY KEY, attempts INT NOT NULL, expires_at DATETIME NOT NULL, INDEX (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS password_resets (
+ token_hash CHAR(64) PRIMARY KEY, user_id BIGINT NOT NULL, expires_at DATETIME NOT NULL,
+ INDEX (user_id), FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS customers (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, tenant_id BIGINT NOT NULL, name VARCHAR(160) NOT NULL, kind ENUM('PF','PJ') NOT NULL DEFAULT 'PF',
+ document VARCHAR(14) NULL, phone VARCHAR(30) NOT NULL DEFAULT '', whatsapp VARCHAR(30) NOT NULL DEFAULT '',
+ email VARCHAR(190) NULL, cep VARCHAR(8) NOT NULL DEFAULT '', street VARCHAR(160) NOT NULL DEFAULT '', address_number VARCHAR(25) NOT NULL DEFAULT '',
+ district VARCHAR(100) NOT NULL DEFAULT '', city VARCHAR(100) NOT NULL DEFAULT '', uf VARCHAR(2) NOT NULL DEFAULT '', notes TEXT NOT NULL,
+ archived TINYINT NOT NULL DEFAULT 0, UNIQUE (tenant_id,id), UNIQUE (tenant_id,document), UNIQUE (tenant_id,email), INDEX (tenant_id,archived,name),
+ FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS customer_assets (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, tenant_id BIGINT NOT NULL, customer_id BIGINT NOT NULL, kind VARCHAR(90) NOT NULL,
+ brand VARCHAR(90) NOT NULL, model VARCHAR(90) NOT NULL, serial VARCHAR(120) NOT NULL, location VARCHAR(160) NOT NULL, notes TEXT NOT NULL,
+ archived TINYINT NOT NULL DEFAULT 0, UNIQUE (tenant_id,id), UNIQUE (tenant_id,customer_id,id),
+ FOREIGN KEY (tenant_id,customer_id) REFERENCES customers(tenant_id,id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS service_catalog (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, tenant_id BIGINT NOT NULL, name VARCHAR(160) NOT NULL, description TEXT NOT NULL,
+ price DECIMAL(12,2) NOT NULL, minutes INT NOT NULL, archived TINYINT NOT NULL DEFAULT 0,
+ UNIQUE (tenant_id,id), FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

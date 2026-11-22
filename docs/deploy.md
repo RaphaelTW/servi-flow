@@ -1,0 +1,23 @@
+# HostGator e cPanel
+
+Use um domínio ou subdomínio próprio para o produto. O deploy pressupõe Apache com reescrita, PHP 8.3 ou versão atualizada compatível, PDO MySQL e MariaDB/MySQL com InnoDB. A HostGator documenta MultiPHP para contas compartilhadas e lista módulos por versão. Confirme as extensões, acesso a terminal ou importação SQL, configuração do diretório web e acesso SMTP no plano específico.
+
+- [Compatibilidades da HostGator](https://suporte.hostgator.com.br/hc/pt-br/articles/30811116692115-Quais-s%C3%A3o-as-compatibilidades-da-HostGator)
+- [Módulos PHP padrão](https://suporte.hostgator.com.br/hc/pt-br/articles/30817324046483-Quais-m%C3%B3dulos-PHP-est%C3%A3o-instalados-por-padr%C3%A3o-nos-servidores)
+- [Gerenciador MultiPHP](https://suporte.hostgator.com.br/hc/pt-br/articles/30807998885395-Como-alterar-a-vers%C3%A3o-do-PHP-na-hospedagem)
+
+## Instalação
+
+Configure o Apache para usar somente `public/` como DocumentRoot. Em `public/`, habilite `mod_rewrite` e permita `Options -Indexes -MultiViews`. O arquivo de regras da aplicação fica em `public/.htaccess`. As rotas de validação ACME e cPanel continuam acessíveis antes do HTTPS.
+
+1. Escolha um caminho privado como `/home/USUARIO/serviflow`, fora de `public_html` e de quaisquer outros DocumentRoots. Use `/home/USUARIO/serviflow/public` como DocumentRoot quando o cPanel permitir. Se o domínio exigir DocumentRoot dentro de `public_html`, publique exclusivamente o conteúdo de `public/` nele e ajuste os caminhos de bootstrap e Views em `index.php` para apontarem ao diretório privado absoluto. Confirme que arquivos públicos e privados estão fisicamente separados.
+2. Selecione a versão no MultiPHP e confirme `pdo_mysql`, `mbstring`, `curl`, `dom`, `fileinfo`, `openssl` e `gd`. XLSX requer ZIP e XMLWriter. Use `upload_max_filesize` de pelo menos 5 MB, `post_max_size` superior a 5 MB e `memory_limit` adequado para reprocessamento de imagens e PDFs.
+3. Na pasta privada, execute `composer install --no-dev --optimize-autoloader`. Sem Composer no servidor, rode o mesmo comando antes de transferir e inclua `vendor/` e `public/assets/vendor/`. Confira a plataforma real, pois o Composer local valida apenas as extensões de onde executa. Use `composer check-platform-reqs --no-dev` no servidor quando disponível.
+4. Crie banco e usuários pelo cPanel com o prefixo real da conta. Copie `.env.example` como `.env` dentro do diretório privado. Configure `APP_ENV=production`, `APP_URL=https://seu-dominio.example`, dados do banco e contato de suporte. Garanta permissão de gravação em `storage/` para o PHP e limite a leitura de `.env` ao usuário da aplicação. Evite permissão 777.
+5. Com SSH ou Terminal, execute `php bin/migrate.php` com a conta de migração. Se a versão do `php` CLI divergir, indique o binário configurado pelo provedor. Sem terminal, importe os SQL em ordem no phpMyAdmin com a conta autorizada e registre os quatro nomes em `schema_migrations` após verificar sucesso, antes de futuramente usar o runner. Para essa opção, crie a tabela com a definição em `bin/migrate.php`. Utilize uma instalação nova para importação manual, mantenha um backup nas atualizações e valide os nomes aplicados com `bin/check.php`.
+6. Troque a conta de banco usada pelo aplicativo para os privilégios de dados. Habilite o certificado e o redirecionamento canônico de HTTP para HTTPS no cPanel. A aplicação só habilita HSTS quando recebe HTTPS e quando `APP_URL` usa HTTPS. Em caso de proxy, configure o servidor web para propagar o estado HTTPS por mecanismo confiável do provedor.
+7. Crie o superadministrador com o procedimento do README. Quando a hospedagem não oferece terminal, crie a conta em um banco administrativo local de implantação e importe de forma protegida somente o registro necessário e o hash da senha. Prefira um ambiente com terminal para evitar transferência de hashes.
+8. Rode `php bin/check.php` e abra a landing, `/sitemap.xml`, `/entrar` e uma URL inexistente. Pelo navegador verifique que `/.env`, `/database/migrations/001_core.sql`, `/storage/` e `/vendor/autoload.php` não retornam o conteúdo privado. Faça o piloto com duas contas novas.
+9. Configure cron diário para `php /home/USUARIO/serviflow/bin/maintenance.php`. Capture a saída em arquivo privado ou canal operacional. Revise a exposição dos caminhos `/acompanhar/*` e `/recuperar/*` em logs de Apache, proxy e CDN. Solicite exclusão ou redação do token nesses logs ao provedor quando a conta não permitir ajustar o formato.
+
+A plataforma Sites opera com outro runtime de servidor. Esta entrega executa PHP e MySQL localmente e a publicação prevista usa a conta cPanel da organização.

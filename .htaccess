@@ -1,0 +1,2 @@
+# Configure public/ como DocumentRoot. As regras deste site ficam em public/.htaccess.
+# Mantenha esta pasta fora de qualquer DocumentRoot.

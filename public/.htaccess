@@ -1,0 +1,18 @@
+Options -Indexes -MultiViews
+RewriteEngine On
+
+# Permite a validação de certificados antes do HTTPS.
+RewriteRule ^\.well-known/(?:acme-challenge|pki-validation)/[A-Za-z0-9_-]+(?:\.txt)?$ - [END]
+
+# Protege arquivos privados copiados por engano para o DocumentRoot.
+RewriteRule (^|/)\. - [F]
+RewriteRule ^(?:bin|config|database|docs|src|storage|tests|vendor)(?:/|$) - [F,NC]
+RewriteRule (^|/)(?:composer\.(?:json|lock)|php\.ini|web\.config)(?:$|/) - [F,NC]
+RewriteRule \.(?:bak|backup|conf|dist|env|ini|log|old|orig|sql|swp|tar|tgz|zip|7z)(?:[./]|$)|~$ - [F,NC]
+
+# Preserva os arquivos públicos e encaminha as demais URLs ao roteador.
+RewriteRule ^index\.php$ - [END]
+RewriteRule \.(?:php[0-9]*|phar|phtml|pht|cgi|pl|py|shtml)(?:[./]|$) - [F,NC]
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [END]
+RewriteRule ^ index.php [END]
